@@ -7,7 +7,7 @@ from .basic_data import basic_data_split
 
 def str2list(x: str) -> list:
     '''문자열을 리스트로 변환하는 함수'''
-    return x[1:-1].split(', ')
+    return x[2:-2].split(', ')
 
 
 def split_location(x: str) -> list:
@@ -148,8 +148,10 @@ def context_data_load(args):
         unique_labels = all_df[col].astype("category").cat.categories
         label2idx[col] = {label:idx for idx, label in enumerate(unique_labels)}
         idx2label[col] = {idx:label for idx, label in enumerate(unique_labels)}
-        train_df[col] = train_df[col].astype("category").cat.codes
-        test_df[col] = test_df[col].astype("category").cat.codes
+        train_df[col] = pd.Categorical(train_df[col], categories=unique_labels).codes
+        test_df[col] = pd.Categorical(test_df[col], categories=unique_labels).codes
+        # train_df[col] = train_df[col].map(label2idx[col])
+        # test_df[col] = test_df[col].map(label2idx[col])
     
     field_dims = [len(label2idx[col]) for col in train_df.columns if col != 'rating']
 
