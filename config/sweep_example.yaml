@@ -15,11 +15,12 @@ description: |-
     남겨둘 메모가 있다면 여기에.
     여러 줄로도 작성 가능
     wandb 사용 시 wandb의 description으로 사용됩니다.
-# command:  # 실행 명령어 : python main.py --param1 value1 ... 와 같은 형식으로 작성 (boolean flag는 True일 때만 사용)
-# - ${env}
-# - ${interpreter}
-# - ${program}
-# - ${args_no_boolean_flags}
+command:  # 실행 명령어 : python main.py --param1 value1 ... 와 같은 형식으로 작성 (boolean flag는 True일 때만 사용)
+- ${env}
+- ${interpreter}
+- ${program}
+- ${args_no_boolean_flags}
+- python main.py -c config/config_baseline.yaml -m FM --wandb True -r FM_baseline
 
 parameters:
     config:         # configuration 파일 경로. 비워두면 됩니다.

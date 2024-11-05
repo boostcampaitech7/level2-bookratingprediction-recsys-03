@@ -145,3 +145,22 @@ train:
     save_best_model: True               # True: val_loss가 최소인 모델 저장 / False: 모든 모델 저장
     resume: False                               # 이어서 학습할 경우 True
     resume_path: saved/checkpoint/FM_best.pt    # 이어서 학습할 모델 경로
+
+optuna_trials: 100
+
+optuna_args:
+    CatBoost:
+        depth:
+            name: 'depth'
+            type: int
+            min: 3
+            max: 15
+        learning_rate:
+            min: 0.01
+            max: 0.3
+        n_estimators:
+            min: 100
+            max: 1000
+        l2_leaf_reg:
+            min: 1
+            max: 10
