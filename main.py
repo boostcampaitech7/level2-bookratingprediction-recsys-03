@@ -160,7 +160,7 @@ if __name__ == "__main__":
         wandb.init(project=config_yaml.wandb_project, 
                    config=OmegaConf.to_container(config_yaml, resolve=True),
                    name=config_yaml.run_name if config_yaml.run_name else None,
-                   tags=[config_yaml.model],
+                   #tags=[config_yaml.model],
                    entity="remember-us",
                    resume="allow")
         config_yaml.run_href = wandb.run.get_url()
