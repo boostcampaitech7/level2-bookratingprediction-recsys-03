@@ -1,7 +1,7 @@
 import os
 from tqdm import tqdm
 import torch
-from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import root_mean_squared_error, mean_absolute_error, mean_squared_error
 from src.loss import loss as loss_module
 import torch.optim as optimizer_module
 import torch.optim.lr_scheduler as scheduler_module
@@ -14,6 +14,12 @@ METRIC_NAMES = {
     'RMSELoss': 'RMSE',
     'MSELoss': 'MSE',
     'MAELoss': 'MAE'
+}
+
+SKLEARN_METRIC_NAMES = {
+    'root_mean_squared_error': 'RMSE',
+    'mean_squared_error': 'MSE',
+    'mean_absolute_error': 'MAE'
 }
 
 def train(args, model, dataloader, logger, setting):
@@ -42,7 +48,8 @@ def train(args, model, dataloader, logger, setting):
         
         # Train CatBoost model
         catboost_model.fit(X_train, y_train)
-        
+        y_hat = catboost_model.predict(X_train)
+        train_loss = root_mean_squared_error(y_train, y_hat)
         # Save trained model
         catboost_model.save_model(f"{setting.get_log_path(args)}/catboost_model.cbm")
 
@@ -50,7 +57,31 @@ def train(args, model, dataloader, logger, setting):
         if args.wandb:
             artifact = wandb.Artifact("catboost_model", type="model")
             wandb.log_artifact(artifact)
-            
+        loss_fn = getattr(loss_module, args.sklearn_loss)
+        args.sklearn_metrics = sorted([metric for metric in set(args.sklearn_metrics) if metric != args.sklearn_loss])
+        msg = ''
+        msg += f'\tTrain Loss ({SKLEARN_METRIC_NAMES[args.sklearn_loss]}): {train_loss:.3f}'
+        valid_loss = valid(args, catboost_model, dataloader['valid_dataloader'].dataset, loss_fn)
+        msg += f'\n\tValid Loss ({SKLEARN_METRIC_NAMES[args.sklearn_loss]}): {valid_loss:.3f}'   
+        valid_metrics = dict()
+        for metric in args.sklearn_metrics:
+            metric_fn = getattr(loss_module, metric)
+            valid_metric = valid(args, catboost_model, dataloader['valid_dataloader'].dataset, metric_fn)
+            valid_metrics[f'Valid {SKLEARN_METRIC_NAMES[metric]}'] = valid_metric
+        for metric, value in valid_metrics.items():
+            msg += f' | {metric}: {value:.3f}'
+        print(msg)
+        #logger.log(train_loss=train_loss, valid_loss=valid_loss, valid_metrics=valid_metrics)
+        if args.wandb:
+            wandb.log({f'Train {SKLEARN_METRIC_NAMES[args.sklearn_loss]}': train_loss, 
+                    f'Valid {SKLEARN_METRIC_NAMES[args.sklearn_loss]}': valid_loss, **valid_metrics})
+        '''
+        loss_fn = getattr(loss_module, args.loss)()
+        if args.wandb:
+            wandb.log({f'Train {METRIC_NAMES[args.loss]}': root_mean_squared_error(y_train, y_hat), 
+                       f'Valid RMSE': valid(args, catboost_model, dataloader['valid_dataloader'].dataset, loss_fn)})
+        '''
+
         return catboost_model
 
     elif args.model == 'XGBoost':  # XGBoost-specific logic
@@ -182,11 +213,12 @@ def train(args, model, dataloader, logger, setting):
 
 def valid(args, model, dataloader, loss_fn):
     if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
-        valid_data = dataloader['valid_dataloader'].dataset
-        X_valid, y_valid = valid_data[:][0].to(args.device).numpy(), valid_data[:][1].to(args.device).numpy()
+        X_valid, y_valid = dataloader[:][0].cpu().numpy(), dataloader[:][1].cpu().numpy()
         y_hat = model.predict(X_valid)
+        loss = loss_fn(y_valid, y_hat)
 
-        return root_mean_squared_error(y_valid, y_hat)
+        return loss
+    
     else:
         model.eval()
         total_loss = 0
