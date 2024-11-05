@@ -160,7 +160,6 @@ if __name__ == "__main__":
         wandb.init(project=config_yaml.wandb_project, 
                    config=OmegaConf.to_container(config_yaml, resolve=True),
                    name=config_yaml.run_name if config_yaml.run_name else None,
-                   notes=config_yaml.memo if hasattr(config_yaml, 'memo') else None,
                    tags=[config_yaml.model],
                    entity="remember-us",
                    resume="allow")
