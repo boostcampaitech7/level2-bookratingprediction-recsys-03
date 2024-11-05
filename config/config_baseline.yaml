@@ -107,7 +107,6 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
 
 dataset:
     data_path: ~/book/data/    # 데이터셋 경로
-
     valid_ratio: 0.2    # Train / Vaildation split
 
 dataloader:

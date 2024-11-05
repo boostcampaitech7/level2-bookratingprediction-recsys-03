@@ -58,7 +58,7 @@ def train(args, model, dataloader, logger, setting):
             n_estimators=args.train.n_estimators,
             max_depth=args.train.max_depth,
             learning_rate=args.train.learning_rate,
-            objective=args.loss,
+            objective='reg:squarederror',
             seed=args.seed,
             device=args.device
         )
@@ -73,31 +73,29 @@ def train(args, model, dataloader, logger, setting):
 
         # Optionally log with wandb
         if args.wandb:
-            wandb.log({"xgboost_model": wandb.Artifact("xgboost_model", type="model")})
+            artifact = wandb.Artifact("catboost_model", type="model")
+            wandb.log_artifact(artifact)
         
         return xgboost_model
 
     elif args.model == 'LightGBM':  # LightGBM-specific logic
         lightgbm_model = LGBMRegressor(
             n_estimators=args.train.n_estimators,
-            learning_rate=args.learning_rate, 
+            learning_rate=args.train.learning_rate, 
             max_depth=args.train.max_depth, 
-            objective=args.loss,
-            random_state=args.seed,
-            device=args.device
+            objective='regression_l2',
+            random_state=args.seed
         )
 
         train_data = dataloader['train_dataloader'].dataset
-        if args.device == 'cuda':
-            X_train, y_train = train_data[:][0].numpy(), train_data[:][1].numpy()
-        else:
-            X_train, y_train = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
+        X_train, y_train = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
         
         lightgbm_model.fit(X_train, y_train)
 
         # Optionally log with wandb
         if args.wandb:
-            wandb.log({"lightgbm_model": wandb.Artifact("lightgbm_model", type="model")})
+            artifact = wandb.Artifact("catboost_model", type="model")
+            wandb.log_artifact(artifact)
 
         return lightgbm_model
 
