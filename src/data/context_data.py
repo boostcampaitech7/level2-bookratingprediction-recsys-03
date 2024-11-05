@@ -7,7 +7,7 @@ from .basic_data import basic_data_split
 
 def str2list(x: str) -> list:
     '''문자열을 리스트로 변환하는 함수'''
-    return x[1:-1].split(', ')
+    return x[2:-2].split(', ')
 
 
 def split_location(x: str) -> list:
@@ -35,6 +35,151 @@ def split_location(x: str) -> list:
 
     return res
 
+def text_preprocessing(summary: str) -> str:
+    """
+    주어진 텍스트 요약을 전처리합니다.
+
+    1. 특수 문자 제거
+    2. 알파벳과 숫자, 공백을 제외한 모든 문자 제거
+    3. 여러 개의 공백을 하나의 공백으로
+    4. 문자열의 앞뒤 공백 제거
+    5. 모든 문자를 소문자로 변환
+
+    Args:
+        summary (str): 전처리할 텍스트 문자열
+
+    Returns:
+        str: 전처리된 텍스트 문자열. 입력이 NaN인 경우 "unknown" 반환.
+    """
+    if pd.isna(summary):
+        return 'unknown'  # NaN일 경우 "unknown" 반환
+    
+    summary = regex.sub('[.,\'\"''\"!?]', '', summary)  # 특수 문자 제거
+    summary = regex.sub('[^0-9a-zA-Z\s]', '', summary)  # 알파벳과 숫자, 공백 제외한 문자 제거
+    summary = regex.sub('\s+', ' ', summary)  # 여러 개의 공백을 하나의 공백으로
+    summary = summary.lower()  # 소문자로 변환
+    summary = summary.strip()  # 앞뒤 공백 제거
+    return summary
+
+def categorize_publication(x: int, a: int) -> int:
+    """
+    주어진 연도를 특정 기준에 따라 카테고리화하는 함수입니다.
+
+    Parameters
+    ----------
+    x : int
+        책의 발행 연도.
+    a : int
+        연도를 그룹화할 때 사용할 기준값 (예: 5년 단위로 그룹화).
+
+    Returns
+    -------
+    int
+        카테고리화된 연도를 반환합니다. 
+        - 1970년 이하의 연도는 1970으로 반환합니다.
+        - 2000년 초과의 연도는 2006으로 반환합니다.
+        - 나머지 연도는 a 값에 맞게 그룹화하여 반환합니다.
+
+    Example
+    -------
+    books['years'] = books['year_of_publication'].apply(lambda x: categorize_publication(x, 5))
+    print(books['years'].value_counts())
+    """
+    if x <= 1970:
+        return 1970
+    elif x > 2000:
+        return 2006
+    else:
+        return x // a * a
+
+def extract_language_from_isbn(isbn):
+    """
+    ISBN 정보를 사용하여 언어 코드를 추출하는 함수입니다.
+
+    Parameters
+    ----------
+    isbn : str
+        책의 ISBN 번호.
+
+    Returns
+    -------
+    str
+        ISBN에서 추출한 언어 코드. ISBN이 비어있거나 형식에 맞지 않을 경우 최빈값 'en'을 반환합니다.
+        - isbn_language_map 참고
+        - 기타 언어 코드: isbn_language_map에 정의된 국가 코드를 기반으로 반환
+    """
+    # isbn_language_map = {
+    #     '0': 'en', '1': 'en', '2': 'fr', '3': 'de', '4': 'ja',
+    #     '5': 'ru', '7': 'zh-CN', '82': 'no', '84': 'es', '87': 'da',
+    #     '88': 'it', '89': 'ko', '94': 'nl', '600': 'fa', '602': 'ms',
+    #     '606': 'ro', '604': 'vi', '618': 'el', '967': 'ms', '974': 'th',
+    #     '989': 'pt'
+    # }
+    isbn_language_map = {
+        '0': 'en', '1': 'en', '2': 'fr', '3': 'de', '4': 'ja', '5': 'ru', '7': 'zh-CN',
+        '82': 'no', '84': 'es', '87': 'da', '88': 'it', 
+        '602': 'ms', '967': 'ms', '974': 'th'
+        #'89': 'ko', '94': 'nl', # '600': 'fa', '604': 'vi', '606': 'ro', '618': 'el', '989': 'pt'
+    }
+    if not isbn or not isbn.isdigit():
+        return 'en'  # 기본값 영어권
+    for prefix, language in isbn_language_map.items():
+        if isbn.startswith(prefix):
+            return language
+    return 'en'  # 기본값 영어권
+
+def replace_language_using_isbn(books):
+    """
+    ISBN 정보를 활용하여 language 결측치를 대체하는 함수입니다.
+
+    Parameters
+    ----------
+    books : pd.DataFrame
+        책 정보가 담긴 DataFrame. 반드시 'isbn' 및 'language' 열을 포함해야 합니다.
+
+    Returns
+    -------
+    pd.DataFrame
+        language 결측치가 ISBN 정보를 사용해 대체된 DataFrame. ISBN에서 언어를 추출할 수 없는 경우
+        기본값 'en'으로 대체됩니다.
+
+    Example
+    -------
+    books = replace_language_using_isbn(books)
+    """
+    books['extracted_language'] = books['isbn'].apply(extract_language_from_isbn)
+    books['language'] = books.apply(
+        lambda row: row['extracted_language'] if pd.isna(row['language']) else row['language'],
+        axis=1
+    )
+    books.drop(columns=['extracted_language'], inplace=True)
+    return books
+    
+def categorize_age(x: int, a: int) -> int:
+    """
+    주어진 나이를 특정 기준에 따라 카테고리화하는 함수입니다.
+
+    Parameters
+    ----------
+    x : int
+        유저의 나이.
+    a : int
+        나이를 그룹화할 때 사용할 기준값 (예: 10년 단위로 그룹화).
+
+    Returns
+    -------
+    int
+        카테고리화된 나이를 반환합니다. 
+        - 20년 미만의 나이는 10으로 반환합니다.
+        - 60년 이상의 나이는 60으로 반환합니다.
+        - 나머지 나이는 a 값에 맞게 그룹화하여 반환합니다.
+    """
+    if x < 20:
+        return 10
+    elif x >= 60:
+        return 60
+    else:
+        return x // a * a
 
 def process_context_data(users, books):
     """
@@ -64,13 +209,35 @@ def process_context_data(users, books):
     users_ = users.copy()
     books_ = books.copy()
 
-    # 데이터 전처리 (전처리는 각자의 상황에 맞게 진행해주세요!)
-    books_['category'] = books_['category'].apply(lambda x: str2list(x)[0] if not pd.isna(x) else np.nan)
-    books_['language'] = books_['language'].fillna(books_['language'].mode()[0])
-    books_['publication_range'] = books_['year_of_publication'].apply(lambda x: x // 10 * 10)  # 1990년대, 2000년대, 2010년대, ...
+    # 데이터 전처리
 
-    users_['age'] = users_['age'].fillna(users_['age'].mode()[0])
-    users_['age_range'] = users_['age'].apply(lambda x: x // 10 * 10)  # 10대, 20대, 30대, ...
+    ##################### books
+    books_['book_title'] = books_['book_title'].apply(text_preprocessing)
+    books_['book_author'] = books_['book_author'].apply(text_preprocessing)
+    books_['publisher'] = books_['publisher'].apply(text_preprocessing)
+    books_['publication_range'] = books_['year_of_publication'].apply(lambda x: categorize_publication(x, 5))
+    books_ = replace_language_using_isbn(books_)
+    books_['category'] = books_['category'].apply(lambda x: str2list(x)[0] if not pd.isna(x) else np.nan)
+    books_['category'] = books_['category'].apply(text_preprocessing)
+    high_categories = ['fiction', 'biography', 'history', 'religion', 'nonfiction', 'social', 'science', 'humor', 'body', 
+                   'business', 'economics', 'cook', 'health', 'fitness', 'famil', 'relationship', 
+                   'computer', 'travel', 'selfhelp', 'psychology', 'poetry', 'art', 'critic', 'nature', 'philosophy', 
+                   'reference','drama', 'sports', 'politic', 'comic', 'novel', 'craft', 'language', 'education', 'crime', 'music', 'pet', 
+                   'child', 'collection', 'mystery', 'garden', 'medical', 'author', 'house','technology', 'engineering', 'animal', 'photography',
+                   'adventure', 'game', 'science fiction', 'architecture', 'law', 'fantasy', 'antique', 'friend', 'brother', 'sister', 'cat',
+                   'math', 'christ', 'bible', 'fairy', 'horror', 'design', 'adolescence', 'actor', 'dog', 'transportation', 'murder', 'adultery', 'short', 'bear'
+                   ]
+    # high_category 열을 초기화
+    books_['high_category'] = None
+    # 각 카테고리에 대해 반복하며 매핑
+    for high_category in high_categories:
+        # category 열에서 high_category가 포함된 행을 찾고, 해당 행의 high_category 열을 업데이트
+        books_.loc[books_['category'].str.contains(high_category, case=False, na=False), 'high_category'] = high_category
+    books_['high_category'] = books_['high_category'].fillna('others') # 결측치를 'others'로 대체
+
+    ##################### users
+    users_['age'] = users_['age'].fillna(users_['age'].mean())
+    users_['age_range'] = users_['age'].apply(lambda x: categorize_age(x, 10))
 
     users_['location_list'] = users_['location'].apply(lambda x: split_location(x)) 
     users_['location_country'] = users_['location_list'].apply(lambda x: x[0])
@@ -93,11 +260,7 @@ def process_context_data(users, books):
                 fill_country = users_[users_['location_city'] == row['location_city']]['location_country'].mode()
                 fill_country = fill_country[0] if len(fill_country) > 0 else np.nan
                 users_.loc[idx, 'location_country'] = fill_country
-                users_.loc[idx, 'location_state'] = fill_state
-
-               
-    
-    users_ = users_.drop(['location'], axis=1)
+                users_.loc[idx, 'location_state'] = fill_state         
 
     return users_, books_
 
@@ -130,7 +293,7 @@ def context_data_load(args):
     # 베이스라인에서는 가능한 모든 컬럼을 사용하도록 구성하였습니다.
     # NCF를 사용할 경우, idx 0, 1은 각각 user_id, isbn이어야 합니다.
     user_features = ['user_id', 'age_range', 'location_country', 'location_state', 'location_city']
-    book_features = ['isbn', 'book_title', 'book_author', 'publisher', 'language', 'category', 'publication_range']
+    book_features = ['isbn', 'book_title', 'book_author', 'publisher', 'language', 'high_category', 'publication_range']
     sparse_cols = ['user_id', 'isbn'] + list(set(user_features + book_features) - {'user_id', 'isbn'}) if args.model == 'NCF' \
                    else user_features + book_features
 
@@ -148,8 +311,10 @@ def context_data_load(args):
         unique_labels = all_df[col].astype("category").cat.categories
         label2idx[col] = {label:idx for idx, label in enumerate(unique_labels)}
         idx2label[col] = {idx:label for idx, label in enumerate(unique_labels)}
-        train_df[col] = train_df[col].astype("category").cat.codes
-        test_df[col] = test_df[col].astype("category").cat.codes
+        train_df[col] = pd.Categorical(train_df[col], categories=unique_labels).codes
+        test_df[col] = pd.Categorical(test_df[col], categories=unique_labels).codes
+        # train_df[col] = train_df[col].map(label2idx[col])
+        # test_df[col] = test_df[col].map(label2idx[col])
     
     field_dims = [len(label2idx[col]) for col in train_df.columns if col != 'rating']
 
