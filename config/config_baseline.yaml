@@ -139,7 +139,7 @@ sklearn_metrics: [root_mean_squared_error, mean_absolute_error, mean_squared_err
 train:
     epochs: 20                          # 학습 에폭 수
     n_estimators: 300                   # 트리 모델 학습 에폭 수
-    max_depth: 10                       # 트리 모델의 최대 트리 깊이
+    max_depth: 7                        # 트리 모델의 최대 트리 깊이
     learning_rate: 0.1                  # 트리 모델의 학습률
     log_dir: saved/log                  # 로그 저장 경로
     ckpt_dir: saved/checkpoint    # 모델 저장 경로
@@ -154,15 +154,21 @@ optuna_args:
     CatBoost:
         depth:
             name: 'depth'
-            type: int
+            type: 'int'
             min: 3
             max: 15
         learning_rate:
+            name: 'learning_rate'
+            type: 'float'
             min: 0.01
             max: 0.3
         n_estimators:
+            name: 'n_estimators'
+            type: 'int'
             min: 100
             max: 1000
         l2_leaf_reg:
+            name: 'l2_leaf_reg'
+            type: 'int'
             min: 1
             max: 10

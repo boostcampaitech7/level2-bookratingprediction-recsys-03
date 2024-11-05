@@ -1,7 +1,6 @@
 import argparse
 import ast
 from omegaconf import OmegaConf
-import optuna.samplers
 import pandas as pd
 import torch
 import torch.optim as optimizer_module
@@ -17,11 +16,16 @@ def objective(trial, args, data):
     if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
         p = args.optuna_args[args.model]
         params = {
-            param.name: (
-                trial.suggest_int(param.name, param.min, param.max) if param.type == 'int' else 
-                trial.suggest_float(param.name, param.min, param.max)
-            ) for param, _ in p.items()
+            param['name']: (
+                trial.suggest_int(param['name'], param['min'], param['max']) if param.type == 'int' else 
+                trial.suggest_float(param['name'], param['min'], param['max'])
+            ) for _, param in p.items()
         }
+        params['verbose'] = False
+        params['task_type'] = 'GPU'
+        params['devices'] = '0'
+        params['cat_features'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
         model = getattr(model_module, args.model)(**params)
 
         # Prepare data for CatBoost
@@ -39,7 +43,8 @@ def objective(trial, args, data):
         
         model.fit(X_train, y_train)
         y_hat = model.predict(X_valid)
-        train_rmse = root_mean_squared_error(y_train, y_hat)
+        y_hat_train = model.predict(X_train)
+        train_rmse = root_mean_squared_error(y_train, y_hat_train)
         valid_rmse = root_mean_squared_error(y_valid, y_hat)
         trial.set_user_attr('train_rmse', train_rmse)
 
@@ -138,27 +143,6 @@ if __name__ == "__main__":
     for key in config_args.keys():
         if config_args[key] is not None:
             config_yaml[key] = config_args[key]
-    
-    # 사용되지 않는 정보 삭제 (학습 시에만)
-    if config_yaml.predict == False:
-        del config_yaml.checkpoint
-    
-        if config_yaml.wandb == False:
-            del config_yaml.wandb_project, config_yaml.run_name
-        
-        config_yaml.model_args = OmegaConf.create({config_yaml.model : config_yaml.model_args[config_yaml.model]})
-        
-        config_yaml.optimizer.args = {k: v for k, v in config_yaml.optimizer.args.items() 
-                                    if k in getattr(optimizer_module, config_yaml.optimizer.type).__init__.__code__.co_varnames}
-        
-        if config_yaml.lr_scheduler.use == False:
-            del config_yaml.lr_scheduler.type, config_yaml.lr_scheduler.args
-        else:
-            config_yaml.lr_scheduler.args = {k: v for k, v in config_yaml.lr_scheduler.args.items() 
-                                            if k in getattr(scheduler_module, config_yaml.lr_scheduler.type).__init__.__code__.co_varnames}
-        
-        if config_yaml.train.resume == False:
-            del config_yaml.train.resume_path
 
     # Configuration 콘솔에 출력
     print(OmegaConf.to_yaml(config_yaml))

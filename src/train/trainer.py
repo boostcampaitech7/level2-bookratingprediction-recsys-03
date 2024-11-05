@@ -32,8 +32,12 @@ def train(args, model, dataloader, logger, setting):
             n_estimators=args.train.n_estimators,
             learning_rate=args.train.learning_rate,
             max_depth=args.train.max_depth,
+            # colsample_bylevel=0.5,
             loss_function='RMSE',
+            # eval_metric='RMSE',
+            # bootstrap_type='MVS',
             random_seed=args.seed,
+            cat_features=[i for i in range(10)],
             verbose=False,
             task_type="GPU",
             devices='0'
@@ -47,7 +51,7 @@ def train(args, model, dataloader, logger, setting):
             X_train, y_train = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
         
         # Train CatBoost model
-        catboost_model.fit(X_train, y_train)
+        catboost_model.fit(X_train, y_train) # early_stopping_rounds=100
         y_hat = catboost_model.predict(X_train)
         train_loss = root_mean_squared_error(y_train, y_hat)
         # Save trained model
