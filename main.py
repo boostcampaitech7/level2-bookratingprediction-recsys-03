@@ -42,7 +42,7 @@ def main(args, wandb=None):
     # models > __init__.py 에 저장된 모델만 사용 가능
     # model = FM(args.model_args.FM, data).to('cuda')와 동일한 코드
     if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
-        model = getattr(model_module, args.model)(args.model_args[args.model], data)
+        model = getattr(model_module, args.model)(**args.model_args[args.model].parm)
     else:
         model = getattr(model_module, args.model)(args.model_args[args.model], data).to(args.device)
 

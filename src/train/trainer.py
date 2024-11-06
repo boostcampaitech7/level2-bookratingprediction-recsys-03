@@ -8,7 +8,7 @@ import torch.optim.lr_scheduler as scheduler_module
 from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
-
+from omegaconf import OmegaConf
 
 METRIC_NAMES = {
     'RMSELoss': 'RMSE',
@@ -25,26 +25,28 @@ SKLEARN_METRIC_NAMES = {
 def train(args, model, dataloader, logger, setting):
     if args.wandb:
         import wandb
-    
-    if args.model == 'CatBoost':  # CatBoost-specific logic        
+    if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
+        
         # Prepare data for CatBoost
         train_data = dataloader['train_dataloader'].dataset
         if args.device == 'cuda':
             X_train, y_train = train_data[:][0].numpy(), train_data[:][1].numpy()
         else:
             X_train, y_train = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
-        
+
         # Train CatBoost model
-        model.fit(X_train, y_train) # early_stopping_rounds=100
+        if args.model == 'CatBoost':
+            cat_features_list = OmegaConf.to_container(args.model_args.CatBoost.cat_features, resolve=True)
+            model.fit(X_train, y_train, cat_features = cat_features_list)
+        else:
+            model.fit(X_train, y_train)
+
         y_hat = model.predict(X_train)
         train_loss = root_mean_squared_error(y_train, y_hat)
+        
         # Save trained model
-        model.save_model(f"{setting.get_log_path(args)}/model.cbm")
+        # model.save_model(f"{setting.get_log_path(args)}/{args.model}.cbm")
 
-        # Optionally log with wandb
-        if args.wandb:
-            artifact = wandb.Artifact("model", type="model")
-            wandb.log_artifact(artifact)
         loss_fn = getattr(loss_module, args.sklearn_loss)
         args.sklearn_metrics = sorted([metric for metric in set(args.sklearn_metrics) if metric != args.sklearn_loss])
         msg = ''
@@ -63,60 +65,8 @@ def train(args, model, dataloader, logger, setting):
         if args.wandb:
             wandb.log({f'Train {SKLEARN_METRIC_NAMES[args.sklearn_loss]}': train_loss, 
                     f'Valid {SKLEARN_METRIC_NAMES[args.sklearn_loss]}': valid_loss, **valid_metrics})
-        '''
-        loss_fn = getattr(loss_module, args.loss)()
-        if args.wandb:
-            wandb.log({f'Train {METRIC_NAMES[args.loss]}': root_mean_squared_error(y_train, y_hat), 
-                       f'Valid RMSE': valid(args, model, dataloader['valid_dataloader'].dataset, loss_fn)})
-        '''
 
         return model
-
-    elif args.model == 'XGBoost':  # XGBoost-specific logic
-        xgboost_model = XGBRegressor(
-            n_estimators=args.train.n_estimators,
-            max_depth=args.train.max_depth,
-            learning_rate=args.train.learning_rate,
-            objective='reg:squarederror',
-            seed=args.seed,
-            device=args.device
-        )
-
-        train_data = dataloader['train_dataloader'].dataset
-        if args.device == 'cuda':
-            X_train, y_train = train_data[:][0].numpy(), train_data[:][1].numpy()
-        else:
-            X_train, y_train = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
-        
-        xgboost_model.fit(X_train, y_train)
-
-        # Optionally log with wandb
-        if args.wandb:
-            artifact = wandb.Artifact("catboost_model", type="model")
-            wandb.log_artifact(artifact)
-        
-        return xgboost_model
-
-    elif args.model == 'LightGBM':  # LightGBM-specific logic
-        lightgbm_model = LGBMRegressor(
-            n_estimators=args.train.n_estimators,
-            learning_rate=args.train.learning_rate, 
-            max_depth=args.train.max_depth, 
-            objective='regression_l2',
-            random_state=args.seed
-        )
-
-        train_data = dataloader['train_dataloader'].dataset
-        X_train, y_train = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
-        
-        lightgbm_model.fit(X_train, y_train)
-
-        # Optionally log with wandb
-        if args.wandb:
-            artifact = wandb.Artifact("catboost_model", type="model")
-            wandb.log_artifact(artifact)
-
-        return lightgbm_model
 
     else:
         minimum_loss = None
