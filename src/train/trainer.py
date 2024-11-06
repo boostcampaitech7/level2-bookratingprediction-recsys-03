@@ -26,23 +26,7 @@ def train(args, model, dataloader, logger, setting):
     if args.wandb:
         import wandb
     
-    if args.model == 'CatBoost':  # CatBoost-specific logic
-        # Initialize CatBoost model with specified parameters
-        catboost_model = CatBoostRegressor(
-            n_estimators=args.train.n_estimators,
-            learning_rate=args.train.learning_rate,
-            max_depth=args.train.max_depth,
-            # colsample_bylevel=0.5,
-            loss_function='RMSE',
-            # eval_metric='RMSE',
-            # bootstrap_type='MVS',
-            random_seed=args.seed,
-            cat_features=[i for i in range(10)],
-            verbose=False,
-            task_type="GPU",
-            devices='0'
-        )
-        
+    if args.model == 'CatBoost':  # CatBoost-specific logic        
         # Prepare data for CatBoost
         train_data = dataloader['train_dataloader'].dataset
         if args.device == 'cuda':
@@ -51,26 +35,26 @@ def train(args, model, dataloader, logger, setting):
             X_train, y_train = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
         
         # Train CatBoost model
-        catboost_model.fit(X_train, y_train) # early_stopping_rounds=100
-        y_hat = catboost_model.predict(X_train)
+        model.fit(X_train, y_train) # early_stopping_rounds=100
+        y_hat = model.predict(X_train)
         train_loss = root_mean_squared_error(y_train, y_hat)
         # Save trained model
-        catboost_model.save_model(f"{setting.get_log_path(args)}/catboost_model.cbm")
+        model.save_model(f"{setting.get_log_path(args)}/model.cbm")
 
         # Optionally log with wandb
         if args.wandb:
-            artifact = wandb.Artifact("catboost_model", type="model")
+            artifact = wandb.Artifact("model", type="model")
             wandb.log_artifact(artifact)
         loss_fn = getattr(loss_module, args.sklearn_loss)
         args.sklearn_metrics = sorted([metric for metric in set(args.sklearn_metrics) if metric != args.sklearn_loss])
         msg = ''
         msg += f'\tTrain Loss ({SKLEARN_METRIC_NAMES[args.sklearn_loss]}): {train_loss:.3f}'
-        valid_loss = valid(args, catboost_model, dataloader['valid_dataloader'].dataset, loss_fn)
+        valid_loss = valid(args, model, dataloader['valid_dataloader'].dataset, loss_fn)
         msg += f'\n\tValid Loss ({SKLEARN_METRIC_NAMES[args.sklearn_loss]}): {valid_loss:.3f}'   
         valid_metrics = dict()
         for metric in args.sklearn_metrics:
             metric_fn = getattr(loss_module, metric)
-            valid_metric = valid(args, catboost_model, dataloader['valid_dataloader'].dataset, metric_fn)
+            valid_metric = valid(args, model, dataloader['valid_dataloader'].dataset, metric_fn)
             valid_metrics[f'Valid {SKLEARN_METRIC_NAMES[metric]}'] = valid_metric
         for metric, value in valid_metrics.items():
             msg += f' | {metric}: {value:.3f}'
@@ -83,10 +67,10 @@ def train(args, model, dataloader, logger, setting):
         loss_fn = getattr(loss_module, args.loss)()
         if args.wandb:
             wandb.log({f'Train {METRIC_NAMES[args.loss]}': root_mean_squared_error(y_train, y_hat), 
-                       f'Valid RMSE': valid(args, catboost_model, dataloader['valid_dataloader'].dataset, loss_fn)})
+                       f'Valid RMSE': valid(args, model, dataloader['valid_dataloader'].dataset, loss_fn)})
         '''
 
-        return catboost_model
+        return model
 
     elif args.model == 'XGBoost':  # XGBoost-specific logic
         xgboost_model = XGBRegressor(

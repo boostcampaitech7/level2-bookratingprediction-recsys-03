@@ -24,7 +24,7 @@ def objective(trial, args, data):
         params['verbose'] = False
         params['task_type'] = 'GPU'
         params['devices'] = '0'
-        params['cat_features'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        params['cat_features'] = [i for i in range(12)]
 
         model = getattr(model_module, args.model)(**params)
 
@@ -40,7 +40,7 @@ def objective(trial, args, data):
             X_valid, y_valid = valid_data[:][0].numpy(), valid_data[:][1].numpy()
         else:
             X_valid, y_valid = valid_data[:][0].cpu().numpy(), valid_data[:][1].cpu().numpy()
-        
+
         model.fit(X_train, y_train)
         y_hat = model.predict(X_valid)
         y_hat_train = model.predict(X_train)
@@ -77,10 +77,15 @@ def main(args):
     sampler = optuna.samplers.TPESampler(seed=args.seed)
     study = optuna.create_study(direction='minimize', sampler=sampler)
     study.optimize(lambda trial: objective(trial, args, data), n_trials=args.optuna_trials)
-    
+
+    # wandb log 생성용 모델
     model = getattr(model_module, args.model)(**study.best_params)
-    model.fit(data['train'].drop('rating', axis=1), data['train']['rating'])
-    predicts = test(args, model, data, setting, args.checkpoint)
+    model = train(args, model, data, logger, setting)
+
+    # 최종 제출용 모델
+    submit_model = getattr(model_module, args.model)(**study.best_params)
+    submit_model.fit(data['train'].drop('rating', axis=1), data['train']['rating'])
+    predicts = test(args, submit_model, data, setting, args.checkpoint)
 
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.model} PREDICT ---------------')
