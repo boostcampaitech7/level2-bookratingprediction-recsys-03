@@ -38,7 +38,7 @@ def objective(trial, args, data):
         else:
             X_valid, y_valid = valid_data[:][0].cpu().numpy(), valid_data[:][1].cpu().numpy()
 
-        model.fit(X_train, y_train)
+        model.fit(X_train, y_train, early_stopping_rounds=20)
         y_hat = model.predict(X_valid)
         y_hat_train = model.predict(X_train)
         train_rmse = root_mean_squared_error(y_train, y_hat_train)
@@ -79,6 +79,8 @@ def main(args):
     print(f'-------------------- WANDB LOG FILE ---------------------')
     model = getattr(model_module, args.model)(**study.best_params)
     model = train(args, model, data, logger, setting)
+    if args.wandb:
+        wandb.log({'best_params': study.best_params}) 
 
     # 최종 제출용 모델
     print(f'----------------- {args.model} PREDICT -----------------')

@@ -99,16 +99,23 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
         dropout: 0.2        # MLP_Base에서 드롭아웃 비율
     CatBoost:
         datatype: context
+        # pretrained_model: 'bert-base-uncased'
+        # vector_create: True
+        # word_dim: 768
         cat_features: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         parm:
-            n_estimators: 300
-            learning_rate: 0.1
-            max_depth: 10
+            n_estimators: 500
+            learning_rate: 0.12421185223120967
+            depth: 8
+            l2_leaf_reg: 1
+            colsample_bylevel: 0.9729188669457949
+            boosting_type: 'Plain'
+            bootstrap_type: 'MVS'
             loss_function: 'RMSE'
             random_seed: 0
             verbose: False
-            task_type: "GPU"
-            devices: '0'
+            # task_type: "GPU"
+            # devices: '0'
             
     XGBoost:
         datatype: context
@@ -181,7 +188,7 @@ optuna_args:
             name: 'depth'
             type: 'int'
             min: 3
-            max: 15
+            max: 10
         learning_rate:
             name: 'learning_rate'
             type: 'float'
@@ -202,7 +209,7 @@ optuna_args:
             name: 'max_depth'
             type: 'int'
             min: 3
-            max: 15
+            max: 10
         learning_rate:
             name: 'learning_rate'
             type: 'float'
@@ -223,7 +230,7 @@ optuna_args:
             name: 'max_depth'
             type: 'int'
             min: 3
-            max: 15
+            max: 10
         learning_rate:
             name: 'learning_rate'
             type: 'float'

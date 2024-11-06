@@ -37,7 +37,7 @@ def train(args, model, dataloader, logger, setting):
         # Train CatBoost model
         if args.model == 'CatBoost':
             cat_features_list = OmegaConf.to_container(args.model_args.CatBoost.cat_features, resolve=True)
-            model.fit(X_train, y_train, cat_features = cat_features_list)
+            model.fit(X_train, y_train, cat_features = cat_features_list, verbose=100)
         else:
             model.fit(X_train, y_train)
 
@@ -45,7 +45,8 @@ def train(args, model, dataloader, logger, setting):
         train_loss = root_mean_squared_error(y_train, y_hat)
         
         # Save trained model
-        # model.save_model(f"{setting.get_log_path(args)}/{args.model}.cbm")
+        if args.model == 'CatBoost':
+            model.save_model(f"{setting.get_log_path(args)}/{args.model}.cbm")
 
         loss_fn = getattr(loss_module, args.sklearn_loss)
         args.sklearn_metrics = sorted([metric for metric in set(args.sklearn_metrics) if metric != args.sklearn_loss])
