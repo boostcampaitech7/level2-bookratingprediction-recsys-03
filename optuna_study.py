@@ -2,31 +2,66 @@ import argparse
 import ast
 from omegaconf import OmegaConf
 import pandas as pd
-import torch
-import torch.optim as optimizer_module
-import torch.optim.lr_scheduler as scheduler_module
 from src.utils import Logger, Setting
 import src.data as data_module
 from src.train import train, test
 import src.models as model_module
+import optuna
+from sklearn.metrics import root_mean_squared_error
 
+def objective(trial, args, data):
+    if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
+        p = args.optuna_args[args.model]
+        params = {
+            param['name']: (
+                trial.suggest_int(param['name'], param['min'], param['max']) if param.type == 'int' else 
+                trial.suggest_float(param['name'], param['min'], param['max'])
+            ) for _, param in p.items()
+        }
+        params['verbose'] = False
+        params['task_type'] = 'GPU'
+        params['devices'] = '0'
+        params['cat_features'] = [i for i in range(12)]
 
-def main(args, wandb=None):
+        model = getattr(model_module, args.model)(**params)
+
+        # Prepare data for CatBoost
+        train_data = data['train_dataloader'].dataset
+        if args.device == 'cuda':
+            X_train, y_train = train_data[:][0].numpy(), train_data[:][1].numpy()
+        else:
+            X_train, y_train = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
+        
+        valid_data = data['valid_dataloader'].dataset
+        if args.device == 'cuda':
+            X_valid, y_valid = valid_data[:][0].numpy(), valid_data[:][1].numpy()
+        else:
+            X_valid, y_valid = valid_data[:][0].cpu().numpy(), valid_data[:][1].cpu().numpy()
+
+        model.fit(X_train, y_train)
+        y_hat = model.predict(X_valid)
+        y_hat_train = model.predict(X_train)
+        train_rmse = root_mean_squared_error(y_train, y_hat_train)
+        valid_rmse = root_mean_squared_error(y_valid, y_hat)
+        trial.set_user_attr('train_rmse', train_rmse)
+
+        return valid_rmse
+    
+
+def main(args):
     Setting.seed_everything(args.seed)
 
-    ######################## LOAD DATA
+        ######################## LOAD DATA
     datatype = args.model_args[args.model].datatype
     data_load_fn = getattr(data_module, f'{datatype}_data_load')  # e.g. basic_data_load()
     data_split_fn = getattr(data_module, f'{datatype}_data_split')  # e.g. basic_data_split()
     data_loader_fn = getattr(data_module, f'{datatype}_data_loader')  # e.g. basic_data_loader()
-
+    
     print(f'--------------- {args.model} Load Data ---------------')
     data = data_load_fn(args)
-
     print(f'--------------- {args.model} Train/Valid Split ---------------')
     data = data_split_fn(args, data)
     data = data_loader_fn(args, data)
-
 
     ####################### Setting for Log
     setting = Setting()
@@ -35,36 +70,21 @@ def main(args, wandb=None):
         log_path = setting.get_log_path(args)
         logger = Logger(args, log_path)
         logger.save_args()
+    
+    sampler = optuna.samplers.TPESampler(seed=args.seed)
+    study = optuna.create_study(direction='minimize', sampler=sampler)
+    study.optimize(lambda trial: objective(trial, args, data), n_trials=args.optuna_trials)
 
+    # wandb log 생성용 모델
+    print(f'-------------------- WANDB LOG FILE ---------------------')
+    model = getattr(model_module, args.model)(**study.best_params)
+    model = train(args, model, data, logger, setting)
 
-    ######################## Model
-    print(f'--------------- INIT {args.model} ---------------')
-    # models > __init__.py 에 저장된 모델만 사용 가능
-    # model = FM(args.model_args.FM, data).to('cuda')와 동일한 코드
-    if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
-        model = getattr(model_module, args.model)(**args.model_args[args.model].parm)
-    else:
-        model = getattr(model_module, args.model)(args.model_args[args.model], data).to(args.device)
-
-    # 만일 기존의 모델을 불러와서 학습을 시작하려면 resume을 true로 설정하고 resume_path에 모델을 지정하면 됨
-    if args.train.resume:
-        model.load_state_dict(torch.load(args.train.resume_path, weights_only=True))
-
-
-    ######################## TRAIN
-    if not args.predict:
-        print(f'--------------- {args.model} TRAINING ---------------')
-        model = train(args, model, data, logger, setting)
-
-
-    ######################## INFERENCE
-    if not args.predict:
-        print(f'--------------- {args.model} PREDICT ---------------')
-        predicts = test(args, model, data, setting)
-    else:
-        print(f'--------------- {args.model} PREDICT ---------------')
-        predicts = test(args, model, data, setting, args.checkpoint)
-
+    # 최종 제출용 모델
+    print(f'----------------- {args.model} PREDICT -----------------')
+    submit_model = getattr(model_module, args.model)(**study.best_params)
+    submit_model.fit(data['train'].drop('rating', axis=1), data['train']['rating'])
+    predicts = test(args, submit_model, data, setting, args.checkpoint)
 
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.model} PREDICT ---------------')
@@ -127,27 +147,6 @@ if __name__ == "__main__":
     for key in config_args.keys():
         if config_args[key] is not None:
             config_yaml[key] = config_args[key]
-    
-    # 사용되지 않는 정보 삭제 (학습 시에만)
-    if config_yaml.predict == False:
-        del config_yaml.checkpoint
-    
-        if config_yaml.wandb == False:
-            del config_yaml.wandb_project, config_yaml.run_name
-        
-        config_yaml.model_args = OmegaConf.create({config_yaml.model : config_yaml.model_args[config_yaml.model]})
-        
-        config_yaml.optimizer.args = {k: v for k, v in config_yaml.optimizer.args.items() 
-                                    if k in getattr(optimizer_module, config_yaml.optimizer.type).__init__.__code__.co_varnames}
-        
-        if config_yaml.lr_scheduler.use == False:
-            del config_yaml.lr_scheduler.type, config_yaml.lr_scheduler.args
-        else:
-            config_yaml.lr_scheduler.args = {k: v for k, v in config_yaml.lr_scheduler.args.items() 
-                                            if k in getattr(scheduler_module, config_yaml.lr_scheduler.type).__init__.__code__.co_varnames}
-        
-        if config_yaml.train.resume == False:
-            del config_yaml.train.resume_path
 
     # Configuration 콘솔에 출력
     print(OmegaConf.to_yaml(config_yaml))

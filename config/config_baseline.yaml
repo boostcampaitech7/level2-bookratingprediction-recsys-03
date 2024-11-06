@@ -164,7 +164,7 @@ sklearn_metrics: [root_mean_squared_error, mean_absolute_error, mean_squared_err
 train:
     epochs: 20                          # 학습 에폭 수
     n_estimators: 300                   # 트리 모델 학습 에폭 수
-    max_depth: 10                       # 트리 모델의 최대 트리 깊이
+    max_depth: 7                        # 트리 모델의 최대 트리 깊이
     learning_rate: 0.1                  # 트리 모델의 학습률
     log_dir: saved/log                  # 로그 저장 경로
     ckpt_dir: saved/checkpoint    # 모델 저장 경로
@@ -172,3 +172,70 @@ train:
     save_best_model: True               # True: val_loss가 최소인 모델 저장 / False: 모든 모델 저장
     resume: False                               # 이어서 학습할 경우 True
     resume_path: saved/checkpoint/FM_best.pt    # 이어서 학습할 모델 경로
+
+optuna_trials: 100
+
+optuna_args:
+    CatBoost:
+        depth:
+            name: 'depth'
+            type: 'int'
+            min: 3
+            max: 15
+        learning_rate:
+            name: 'learning_rate'
+            type: 'float'
+            min: 0.01
+            max: 0.3
+        n_estimators:
+            name: 'n_estimators'
+            type: 'int'
+            min: 100
+            max: 1000
+        l2_leaf_reg:
+            name: 'l2_leaf_reg'
+            type: 'int'
+            min: 1
+            max: 10
+    XGBoost:
+        max_depth:
+            name: 'max_depth'
+            type: 'int'
+            min: 3
+            max: 15
+        learning_rate:
+            name: 'learning_rate'
+            type: 'float'
+            min: 0.01
+            max: 0.3
+        n_estimators:
+            name: 'n_estimators'
+            type: 'int'
+            min: 100
+            max: 1000
+        gamma: 
+            name: 'gamma'
+            type: 'float'
+            min: 0
+            max: 5
+    LightGBM:
+        max_depth:
+            name: 'max_depth'
+            type: 'int'
+            min: 3
+            max: 15
+        learning_rate:
+            name: 'learning_rate'
+            type: 'float'
+            min: 0.01
+            max: 0.3
+        n_estimators:
+            name: 'n_estimators'
+            type: 'float'
+            min: 0
+            max: 1
+        lambda_l2:
+            name: 'lambda_l2'
+            type: 'float'
+            min: 0
+            max: 1
