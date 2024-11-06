@@ -99,10 +99,35 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
         dropout: 0.2        # MLP_Base에서 드롭아웃 비율
     CatBoost:
         datatype: context
+        cat_features: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        parm:
+            n_estimators: 300
+            learning_rate: 0.1
+            max_depth: 10
+            loss_function: 'RMSE'
+            random_seed: 0
+            verbose: False
+            task_type: "GPU"
+            devices: '0'
+            
     XGBoost:
         datatype: context
+        parm:
+            n_estimators: 300
+            max_depth: 10
+            learning_rate: 0.1
+            objective: 'reg:squarederror'
+            seed: 0
+            device: cuda
+
     LightGBM:
         datatype: context
+        parm:
+            n_estimators: 300
+            learning_rate: 0.1
+            max_depth: 10
+            objective: 'regression_l2'
+            random_state: 0
 
 
 dataset:

@@ -12,13 +12,3 @@ class RMSELoss(nn.Module):
         criterion = MSELoss()
         loss = torch.sqrt(criterion(x, y)+self.eps)
         return loss
-    '''
-import numpy as np
-class root_mean_squared_error:
-    def __init__(self):
-        self.eps = 1e-6
-    def __call__(self, x, y):
-        mse = np.mean((x - y) ** 2)
-        rmse = np.sqrt(mse + self.eps)
-        return rmse
-        '''
