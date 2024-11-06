@@ -2,9 +2,6 @@ import argparse
 import ast
 from omegaconf import OmegaConf
 import pandas as pd
-import torch
-import torch.optim as optimizer_module
-import torch.optim.lr_scheduler as scheduler_module
 from src.utils import Logger, Setting
 import src.data as data_module
 from src.train import train, test
@@ -79,10 +76,12 @@ def main(args):
     study.optimize(lambda trial: objective(trial, args, data), n_trials=args.optuna_trials)
 
     # wandb log 생성용 모델
+    print(f'-------------------- WANDB LOG FILE ---------------------')
     model = getattr(model_module, args.model)(**study.best_params)
     model = train(args, model, data, logger, setting)
 
     # 최종 제출용 모델
+    print(f'----------------- {args.model} PREDICT -----------------')
     submit_model = getattr(model_module, args.model)(**study.best_params)
     submit_model.fit(data['train'].drop('rating', axis=1), data['train']['rating'])
     predicts = test(args, submit_model, data, setting, args.checkpoint)
