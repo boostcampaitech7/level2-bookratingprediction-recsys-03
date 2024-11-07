@@ -10,6 +10,8 @@ from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from omegaconf import OmegaConf
 from sklearn.model_selection import StratifiedKFold
+import pandas as pd
+from typing import Any, Dict, Tupl
 
 METRIC_NAMES = {
     'RMSELoss': 'RMSE',
@@ -210,7 +212,19 @@ def test(args, model, dataloader, setting, checkpoint=None):
     return predicts
 
 
-def stf_train(args, model, dataloader, setting):
+def stf_train(args: Any, model: Any, dataloader: Dict[str, DataLoader], setting: Any) -> pd.DataFrame:
+    '''
+     Stratified K-Fold 교차 검증을 사용하여 모델을 학습하고 메트릭을 기록
+    
+    Args:
+        args (Any): 장치, 모델 유형 및 메트릭과 같은 구성 설정을 포함하는 인수
+        model (Any): 학습할 기계 학습 모델 (fit 메서드 사용 가능한 모델)
+        dataloader (Dict[str, DataLoader]): 훈련 데이터
+        setting (Any): 학습 또는 평가에 필요한 추가 설정
+
+    Returns:
+        pd.DataFrame: 학습 후 모델이 만든 예측 결과
+    '''
     if args.wandb:
         import wandb
     
