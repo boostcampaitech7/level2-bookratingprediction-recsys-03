@@ -1,6 +1,7 @@
 import os
 from tqdm import tqdm
 import torch
+from torch.utils.data import DataLoader
 from sklearn.metrics import root_mean_squared_error, mean_absolute_error, mean_squared_error
 from src.loss import loss as loss_module
 import torch.optim as optimizer_module
@@ -11,7 +12,7 @@ from lightgbm import LGBMRegressor
 from omegaconf import OmegaConf
 from sklearn.model_selection import StratifiedKFold
 import pandas as pd
-from typing import Any, Dict, Tupl
+from typing import Dict, Tuple
 
 # 딥러닝에서 사용하는 metric
 METRIC_NAMES = {
@@ -28,7 +29,7 @@ SKLEARN_METRIC_NAMES = {
 }
 
 
-def train(args, model, dataloader, logger, setting):
+def train(args, model, dataloader: Dict[str, DataLoader], logger, setting):
     '''
     모델을 학습시키고 WandB에 loss값을 기록함.
 
@@ -296,15 +297,15 @@ def test(args, model, dataloader, setting, checkpoint=None):
     return predicts
 
 
-def stf_train(args: Any, model: Any, dataloader: Dict[str, DataLoader], setting: Any) -> pd.DataFrame:
+def stf_train(args, model, dataloader: Dict[str, DataLoader], setting) -> pd.DataFrame:
     '''
      Stratified K-Fold 교차 검증을 사용하여 모델을 학습하고 메트릭을 기록
     
     Args:
-        args (Any): 장치, 모델 유형 및 메트릭과 같은 구성 설정을 포함하는 인수
-        model (Any): 학습할 기계 학습 모델 (fit 메서드 사용 가능한 모델)
-        dataloader (Dict[str, DataLoader]): 훈련 데이터
-        setting (Any): 학습 또는 평가에 필요한 추가 설정
+        args: 장치, 모델 유형 및 메트릭과 같은 구성 설정을 포함하는 인수
+        model: 학습할 기계 학습 모델 (fit 메서드 사용 가능한 모델)
+        dataloader (Dict[str, pd.DataLoader]): 훈련 데이터
+        setting : 학습 또는 평가에 필요한 추가 설정
 
     Returns:
         pd.DataFrame: 학습 후 모델이 만든 예측 결과
