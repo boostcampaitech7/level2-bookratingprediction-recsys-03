@@ -50,7 +50,9 @@ def main(args, wandb=None):
     if args.train.resume:
         model.load_state_dict(torch.load(args.train.resume_path, weights_only=True))
 
-    if args.dataset.valid_ratio != 0 or args.model not in ['CatBoost', 'XGBoost', 'LightGBM']:
+    if args.dataset.stratified and args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
+        predicts = stf_train(args, model, data, setting)
+    else:
         ######################## TRAIN
         if not args.predict:
             print(f'--------------- {args.model} TRAINING ---------------')
@@ -64,9 +66,7 @@ def main(args, wandb=None):
         else:
             print(f'--------------- {args.model} PREDICT ---------------')
             predicts = test(args, model, data, setting, args.checkpoint)
-    else:
-        # StratifiedKFold
-        predicts = stf_train(args, model, data, logger, setting)
+        
 
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.model} PREDICT ---------------')

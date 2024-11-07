@@ -4,7 +4,7 @@ from omegaconf import OmegaConf
 import pandas as pd
 from src.utils import Logger, Setting
 import src.data as data_module
-from src.train import train, test
+from src.train import train, test, stf_train
 import src.models as model_module
 import optuna
 from sklearn.metrics import root_mean_squared_error
@@ -51,7 +51,7 @@ def objective(trial, args, data):
 def main(args):
     Setting.seed_everything(args.seed)
 
-        ######################## LOAD DATA
+    ######################## LOAD DATA
     datatype = args.model_args[args.model].datatype
     data_load_fn = getattr(data_module, f'{datatype}_data_load')  # e.g. basic_data_load()
     data_split_fn = getattr(data_module, f'{datatype}_data_split')  # e.g. basic_data_split()
@@ -83,8 +83,11 @@ def main(args):
     # 최종 제출용 모델
     print(f'----------------- {args.model} PREDICT -----------------')
     submit_model = getattr(model_module, args.model)(**study.best_params)
-    submit_model.fit(data['train'].drop('rating', axis=1), data['train']['rating'])
-    predicts = test(args, submit_model, data, setting, args.checkpoint)
+    if args.dataset.stratified:
+        predicts = stf_train(args, submit_model, data, setting)
+    else:
+        submit_model.fit(data['train'].drop('rating', axis=1), data['train']['rating'])
+        predicts = test(args, submit_model, data, setting, args.checkpoint)
 
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.model} PREDICT ---------------')
