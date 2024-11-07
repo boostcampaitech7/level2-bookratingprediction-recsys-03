@@ -9,7 +9,24 @@ import src.models as model_module
 import optuna
 from sklearn.metrics import root_mean_squared_error
 
-def objective(trial, args, data):
+def objective(
+        trial: optuna.trial.Trial,
+        args: argparse.Namespace, 
+        data: dict) -> float:
+    '''
+    Optuna를 사용하여 주어진 모델의 하이퍼파라미터를 최적화하는 함수
+
+    Args:
+        trial (optuna.trial.Trial): Optuna에서 제공하는 Trial 객체
+        args (argparse.Namespace): 모델 학습에 필요한 설정값을 포함한 객체
+        - args.model : 사용할 모델 이름('CatBoost', 'XGBoost', 'LightGBM')
+        - args.optuna_args : 모델별 최적화할 하이퍼파라미터 범위가 정의된 dict
+        - args.device : 모델을 실행할 장치
+        data (dict): 학습 및 검증 데이터를 포함한 객체
+
+    Returns:
+        float : 검증 데이터에서 계산된 RMSE 값 
+    '''
     if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
         p = args.optuna_args[args.model]
         params = {
