@@ -7,7 +7,7 @@ import torch.optim as optimizer_module
 import torch.optim.lr_scheduler as scheduler_module
 from src.utils import Logger, Setting
 import src.data as data_module
-from src.train import train, test
+from src.train import train, test, stf_train
 import src.models as model_module
 
 
@@ -41,8 +41,9 @@ def main(args, wandb=None):
     print(f'--------------- INIT {args.model} ---------------')
     # models > __init__.py 에 저장된 모델만 사용 가능
     # model = FM(args.model_args.FM, data).to('cuda')와 동일한 코드
+    # 트리 모델('CatBoost', 'XGBoost', 'LightGBM')일 경우, 해당 모델의 하이퍼파라미터를 사용해 모델 초기화
     if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
-        model = getattr(model_module, args.model)(**args.model_args[args.model].parm)
+        model = getattr(model_module, args.model)(**args.model_args[args.model].params)
     else:
         model = getattr(model_module, args.model)(args.model_args[args.model], data).to(args.device)
 
@@ -50,21 +51,23 @@ def main(args, wandb=None):
     if args.train.resume:
         model.load_state_dict(torch.load(args.train.resume_path, weights_only=True))
 
-
-    ######################## TRAIN
-    if not args.predict:
-        print(f'--------------- {args.model} TRAINING ---------------')
-        model = train(args, model, data, logger, setting)
-
-
-    ######################## INFERENCE
-    if not args.predict:
-        print(f'--------------- {args.model} PREDICT ---------------')
-        predicts = test(args, model, data, setting)
+    if args.dataset.stratified and args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
+        predicts = stf_train(args, model, data, setting)
     else:
-        print(f'--------------- {args.model} PREDICT ---------------')
-        predicts = test(args, model, data, setting, args.checkpoint)
+        ######################## TRAIN
+        if not args.predict:
+            print(f'--------------- {args.model} TRAINING ---------------')
+            model = train(args, model, data, logger, setting)
 
+
+        ######################## INFERENCE
+        if not args.predict:
+            print(f'--------------- {args.model} PREDICT ---------------')
+            predicts = test(args, model, data, setting)
+        else:
+            print(f'--------------- {args.model} PREDICT ---------------')
+            predicts = test(args, model, data, setting, args.checkpoint)
+        
 
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.model} PREDICT ---------------')

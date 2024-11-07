@@ -4,12 +4,29 @@ from omegaconf import OmegaConf
 import pandas as pd
 from src.utils import Logger, Setting
 import src.data as data_module
-from src.train import train, test
+from src.train import train, test, stf_train
 import src.models as model_module
 import optuna
 from sklearn.metrics import root_mean_squared_error
 
-def objective(trial, args, data):
+def objective(
+        trial: optuna.trial.Trial,
+        args: argparse.Namespace, 
+        data: dict) -> float:
+    '''
+    Optuna를 사용하여 주어진 모델의 하이퍼파라미터를 최적화하는 함수
+
+    Args:
+        trial (optuna.trial.Trial): Optuna에서 제공하는 Trial 객체
+        args (argparse.Namespace): 모델 학습에 필요한 설정값을 포함한 객체
+        - args.model : 사용할 모델 이름('CatBoost', 'XGBoost', 'LightGBM')
+        - args.optuna_args : 모델별 최적화할 하이퍼파라미터 범위가 정의된 dict
+        - args.device : 모델을 실행할 장치
+        data (dict): 학습 및 검증 데이터를 포함한 객체
+
+    Returns:
+        float : 검증 데이터에서 계산된 RMSE 값 
+    '''
     if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
         p = args.optuna_args[args.model]
         params = {
@@ -51,7 +68,7 @@ def objective(trial, args, data):
 def main(args):
     Setting.seed_everything(args.seed)
 
-        ######################## LOAD DATA
+    ######################## LOAD DATA
     datatype = args.model_args[args.model].datatype
     data_load_fn = getattr(data_module, f'{datatype}_data_load')  # e.g. basic_data_load()
     data_split_fn = getattr(data_module, f'{datatype}_data_split')  # e.g. basic_data_split()
@@ -83,8 +100,11 @@ def main(args):
     # 최종 제출용 모델
     print(f'----------------- {args.model} PREDICT -----------------')
     submit_model = getattr(model_module, args.model)(**study.best_params)
-    submit_model.fit(data['train'].drop('rating', axis=1), data['train']['rating'])
-    predicts = test(args, submit_model, data, setting, args.checkpoint)
+    if args.dataset.stratified:
+        predicts = stf_train(args, submit_model, data, setting)
+    else:
+        submit_model.fit(data['train'].drop('rating', axis=1), data['train']['rating'])
+        predicts = test(args, submit_model, data, setting, args.checkpoint)
 
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.model} PREDICT ---------------')
@@ -97,8 +117,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-
-
     ######################## BASIC ENVIRONMENT SETUP
     parser = argparse.ArgumentParser(description='parser')
     
