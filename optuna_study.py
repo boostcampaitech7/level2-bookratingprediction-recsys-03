@@ -51,7 +51,7 @@ def objective(trial, args, data):
 def main(args):
     Setting.seed_everything(args.seed)
 
-        ######################## LOAD DATA
+    ######################## LOAD DATA
     datatype = args.model_args[args.model].datatype
     data_load_fn = getattr(data_module, f'{datatype}_data_load')  # e.g. basic_data_load()
     data_split_fn = getattr(data_module, f'{datatype}_data_split')  # e.g. basic_data_split()
@@ -97,8 +97,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-
-
     ######################## BASIC ENVIRONMENT SETUP
     parser = argparse.ArgumentParser(description='parser')
     

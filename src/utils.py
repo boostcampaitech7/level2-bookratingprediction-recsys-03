@@ -1,9 +1,10 @@
 import os
-import time
+import pytz
 import random
 import numpy as np
 import torch
 import logging
+from datetime import datetime
 from omegaconf import OmegaConf
 
 def rmse(real: list, predict: list) -> float:
@@ -40,10 +41,8 @@ class Setting:
         torch.backends.cudnn.deterministic = True
 
     def __init__(self):
-        now = time.localtime()
-        now_date = time.strftime('%Y%m%d', now)
-        now_hour = time.strftime('%X', now)
-        save_time = now_date + '_' + now_hour.replace(':', '')
+        tz = pytz.timezone('ASIA/Seoul')
+        save_time = datetime.now(tz).strftime('%Y%m%d_%H%M%S')
         self.save_time = save_time
 
     def get_log_path(self, args):
