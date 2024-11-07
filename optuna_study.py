@@ -18,10 +18,13 @@ def objective(trial, args, data):
                 trial.suggest_float(param['name'], param['min'], param['max'])
             ) for _, param in p.items()
         }
-        params['verbose'] = False
-        params['task_type'] = 'GPU'
-        params['devices'] = '0'
-        params['cat_features'] = [i for i in range(12)]
+        if args.model == 'CatBoost':
+            params['verbose'] = False
+            params['task_type'] = 'GPU'
+            params['devices'] = '0'
+            params['cat_features'] = [i for i in range(12)]
+        else:
+            params['device'] = 'cuda'
 
         model = getattr(model_module, args.model)(**params)
 
@@ -38,7 +41,7 @@ def objective(trial, args, data):
         else:
             X_valid, y_valid = valid_data[:][0].cpu().numpy(), valid_data[:][1].cpu().numpy()
 
-        model.fit(X_train, y_train, early_stopping_rounds=20)
+        model.fit(X_train, y_train)
         y_hat = model.predict(X_valid)
         y_hat_train = model.predict(X_train)
         train_rmse = root_mean_squared_error(y_train, y_hat_train)

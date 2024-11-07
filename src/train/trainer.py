@@ -46,7 +46,9 @@ def train(args, model, dataloader, logger, setting):
         
         # Save trained model
         if args.model == 'CatBoost':
-            model.save_model(f"{setting.get_log_path(args)}/{args.model}.cbm")
+            model.save_model(f"{args.train.ckpt_dir}/{setting.save_time}_{args.model}.cbm")
+        elif args.model == 'XGBoost':
+            model.save_model(f"{args.train.ckpt_dir}/{setting.save_time}_{args.model}.json")
 
         loss_fn = getattr(loss_module, args.sklearn_loss)
         args.sklearn_metrics = sorted([metric for metric in set(args.sklearn_metrics) if metric != args.sklearn_loss])
