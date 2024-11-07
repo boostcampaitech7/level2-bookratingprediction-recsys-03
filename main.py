@@ -41,8 +41,9 @@ def main(args, wandb=None):
     print(f'--------------- INIT {args.model} ---------------')
     # models > __init__.py 에 저장된 모델만 사용 가능
     # model = FM(args.model_args.FM, data).to('cuda')와 동일한 코드
+    # 트리 모델('CatBoost', 'XGBoost', 'LightGBM')일 경우, 해당 모델의 하이퍼파라미터를 사용해 모델 초기화
     if args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
-        model = getattr(model_module, args.model)(**args.model_args[args.model].parm)
+        model = getattr(model_module, args.model)(**args.model_args[args.model].params)
     else:
         model = getattr(model_module, args.model)(args.model_args[args.model], data).to(args.device)
 
