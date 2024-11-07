@@ -108,19 +108,19 @@ def extract_language_from_isbn(isbn):
         - isbn_language_map 참고
         - 기타 언어 코드: isbn_language_map에 정의된 국가 코드를 기반으로 반환
     """
-    isbn_language_map = {
-        '0': 'en', '1': 'en', '2': 'fr', '3': 'de', '4': 'ja',
-        '5': 'ru', '7': 'zh-CN', '82': 'no', '84': 'es', '87': 'da',
-        '88': 'it', '89': 'ko', '94': 'nl', '600': 'fa', '602': 'ms',
-        '606': 'ro', '604': 'vi', '618': 'el', '967': 'ms', '974': 'th',
-        '989': 'pt'
-    }
     # isbn_language_map = {
-    #     '0': 'en', '1': 'en', '2': 'fr', '3': 'de', '4': 'ja', '5': 'ru', '7': 'zh-CN',
-    #     '82': 'no', '84': 'es', '87': 'da', '88': 'it', 
-    #     '602': 'ms', '967': 'ms', '974': 'th'
-    #     #'89': 'ko', '94': 'nl', # '600': 'fa', '604': 'vi', '606': 'ro', '618': 'el', '989': 'pt'
+    #     '0': 'en', '1': 'en', '2': 'fr', '3': 'de', '4': 'ja',
+    #     '5': 'ru', '7': 'zh-CN', '82': 'no', '84': 'es', '87': 'da',
+    #     '88': 'it', '89': 'ko', '94': 'nl', '600': 'fa', '602': 'ms',
+    #     '606': 'ro', '604': 'vi', '618': 'el', '967': 'ms', '974': 'th',
+    #     '989': 'pt'
     # }
+    isbn_language_map = {
+        '0': 'en', '1': 'en', '2': 'fr', '3': 'de', '4': 'ja', '5': 'ru', '7': 'zh-CN',
+        '82': 'no', '84': 'es', '87': 'da', '88': 'it', 
+        '602': 'ms', '967': 'ms', '974': 'th'
+        #'89': 'ko', '94': 'nl', # '600': 'fa', '604': 'vi', '606': 'ro', '618': 'el', '989': 'pt'
+    }
     if not isbn or not isbn.isdigit():
         return 'en'  # 기본값 영어권
     for prefix, language in isbn_language_map.items():
@@ -260,8 +260,7 @@ def process_context_data(users, books):
                 fill_country = users_[users_['location_city'] == row['location_city']]['location_country'].mode()
                 fill_country = fill_country[0] if len(fill_country) > 0 else np.nan
                 users_.loc[idx, 'location_country'] = fill_country
-                users_.loc[idx, 'location_state'] = fill_state
-    users_['location_country'] = users_['location_country'].fillna(users_['location_country'].mode()[0])
+                users_.loc[idx, 'location_state'] = fill_state         
 
     return users_, books_
 
@@ -293,7 +292,7 @@ def context_data_load(args):
     # 사용할 컬럼을 user_features와 book_features에 정의합니다. (단, 모두 범주형 데이터로 가정)
     # 베이스라인에서는 가능한 모든 컬럼을 사용하도록 구성하였습니다.
     # NCF를 사용할 경우, idx 0, 1은 각각 user_id, isbn이어야 합니다.
-    user_features = ['user_id', 'age_range', 'location_country']
+    user_features = ['user_id', 'age_range', 'location_country', 'location_state', 'location_city']
     book_features = ['isbn', 'book_title', 'book_author', 'publisher', 'language', 'high_category', 'publication_range']
     sparse_cols = ['user_id', 'isbn'] + list(set(user_features + book_features) - {'user_id', 'isbn'}) if args.model == 'NCF' \
                    else user_features + book_features
@@ -304,17 +303,6 @@ def context_data_load(args):
     test_df = test.merge(users_, on='user_id', how='left')\
                   .merge(books_, on='isbn', how='left')[sparse_cols]
     all_df = pd.concat([train_df, test_df], axis=0)
-
-    # feature engineering
-    user_id_counts = train_df['user_id'].value_counts()
-    train_df['user_review_counts'] = train_df['user_id'].map(user_id_counts)
-    test_df['user_review_counts'] = test_df['user_id'].map(user_id_counts)
-    test_df['user_review_counts'] = test_df['user_review_counts'].fillna(0)
-
-    book_isbn_counts = train_df['isbn'].value_counts()
-    train_df['book_review_counts'] = train_df['isbn'].map(book_isbn_counts)
-    test_df['book_review_counts'] = test_df['isbn'].map(book_isbn_counts)
-    test_df['book_review_counts'] = test_df['book_review_counts'].fillna(0)
 
     # feature_cols의 데이터만 라벨 인코딩하고 인덱스 정보를 저장
     label2idx, idx2label = {}, {}
@@ -327,14 +315,8 @@ def context_data_load(args):
         test_df[col] = pd.Categorical(test_df[col], categories=unique_labels).codes
         # train_df[col] = train_df[col].map(label2idx[col])
         # test_df[col] = test_df[col].map(label2idx[col])
-
-    # 수치형 변수의 경우 label2idx에 추가 (차원 수는 1로 설정)
-    label2idx['user_review_counts'] = {0: 0}
-    idx2label['user_review_counts'] = {0: 'user_review_counts'}
-    label2idx['book_review_counts'] = {0: 0}
-    idx2label['book_review_counts'] = {0: 'book_review_counts'}
+    
     field_dims = [len(label2idx[col]) for col in train_df.columns if col != 'rating']
-    sparse_cols += ['user_review_counts', 'book_review_counts'] # 추가한 필드명도 포함
 
     data = {
             'train':train_df,
