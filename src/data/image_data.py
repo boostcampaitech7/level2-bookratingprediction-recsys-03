@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from tqdm import tqdm
 from PIL import Image
@@ -5,7 +6,7 @@ from torchvision.transforms import v2
 import torch
 from torch.utils.data import DataLoader, Dataset
 from .basic_data import basic_data_split
-
+from .context_data import process_context_data
 
 class Image_Dataset(Dataset):
     def __init__(self, user_book_vector, img_vector, rating=None):
@@ -61,20 +62,30 @@ def image_vector(path, img_size):
     return transform(img).numpy()
 
 
-def process_img_data(books, args):
+def process_img_data(users, books, args):
     """
     Parameters
     ----------
+    users : pd.DataFrame
+        유저 정보에 대한 데이터 프레임을 입력합니다.
     books : pd.DataFrame
         책 정보에 대한 데이터 프레임을 입력합니다.
     
     Returns
     -------
+    users : pd.DataFrame
+        유저 정보에 전처리를 수행한 데이터 프레임을 반환합니다.
     books_ : pd.DataFrame
-        이미지 정보를 벡터화하여 추가한 데이터 프레임을 반환합니다.
+        책 정보에 전처리를 수행하고 이미지 정보를 벡터화하여 추가한 데이터 프레임을 반환합니다.
     """
+    users_ = users.copy()
     books_ = books.copy()
-    books_['img_path'] = books_['img_path'].apply(lambda x: f'data/{x}')
+
+    # users, books에 전처리 수행 (context_data.py에서 수행한 방법 그대로)
+    users_, books_ = process_context_data(users_, books_)
+
+    # 이미지 정보 벡터화
+    books_['img_path'] = books_['img_path'].apply(lambda x: os.path.expanduser(f'~/book/data/{x}'))
     img_vecs = []
     for idx in tqdm(books_.index):
         img_vec = image_vector(books_.loc[idx, 'img_path'], args.model_args[args.model].img_size)
@@ -106,18 +117,18 @@ def image_data_load(args):
     sub = pd.read_csv(args.dataset.data_path + 'sample_submission.csv')
 
     # 이미지를 벡터화하여 데이터 프레임에 추가
-    books_ = process_img_data(books, args)
+    users_, books_ = process_img_data(users, books, args)
 
     # 유저 및 책 정보를 합쳐서 데이터 프레임 생성 (단, 베이스라인에서는 user_id, isbn, img_vector만 사용함)
     # 사용할 컬럼을 user_features와 book_features에 정의합니다. (단, 모두 범주형 데이터로 가정)
-    user_features = []
-    book_features = []
+    user_features = ['age_range', 'location_country']
+    book_features = ['language', 'high_category', 'publication_range']
     sparse_cols = ['user_id', 'isbn'] + list(set(user_features + book_features) - {'user_id', 'isbn'})
 
     train_df = train.merge(books_, on='isbn', how='left')\
-                    .merge(users, on='user_id', how='left')[sparse_cols + ['img_vector', 'rating']]
+                    .merge(users_, on='user_id', how='left')[sparse_cols + ['img_vector', 'rating']]
     test_df = test.merge(books_, on='isbn', how='left')\
-                  .merge(users, on='user_id', how='left')[sparse_cols + ['img_vector']]
+                  .merge(users_, on='user_id', how='left')[sparse_cols + ['img_vector']]
     all_df = pd.concat([train_df, test_df], axis=0)
 
     # feature_cols의 데이터만 라벨 인코딩하고 인덱스 정보를 저장
