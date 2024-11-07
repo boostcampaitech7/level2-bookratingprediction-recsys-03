@@ -98,42 +98,42 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
         batchnorm: True    # MLP_Base에서 배치 정규화 사용 여부
         dropout: 0.2        # MLP_Base에서 드롭아웃 비율
     CatBoost:
-        datatype: context
-        cat_features: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        parm:
-            n_estimators: 300
-            learning_rate: 0.1
-            max_depth: 10
-            loss_function: 'RMSE'
-            random_seed: 0
-            verbose: False
-            task_type: "GPU"
-            devices: '0'
+        datatype: context   # basic, context, image, text 중 context 가능
+        cat_features: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]    # 카테고리 변수에 해당하는 열 번호
+        params:
+            n_estimators: 300               # 트리 개수
+            learning_rate: 0.1              # 학습률
+            max_depth: 10                   # 트리 최대 깊이
+            loss_function: 'RMSE'           # 손실 함수
+            random_seed: 0                  # 랜덤 시드
+            verbose: 100                    # 로그 출력 레벨
+            task_type: "GPU"                # 사용 디바이스
+            devices: '0'                    # 디바이스 번호
             
     XGBoost:
-        datatype: context
-        parm:
-            n_estimators: 300
-            max_depth: 10
-            learning_rate: 0.1
-            objective: 'reg:squarederror'
-            seed: 0
-            device: cuda
+        datatype: context   # basic, context, image, text 중 context 가능
+        params:
+            n_estimators: 300               # 트리 개수
+            max_depth: 10                   # 트리 최대 깊이
+            learning_rate: 0.1              # 학습률
+            objective: 'reg:squarederror'   # 손실 함수
+            seed: 0                         # 랜덤 시드
+            device: cuda                    # 사용 디바이스
 
     LightGBM:
-        datatype: context
-        parm:
-            n_estimators: 300
-            learning_rate: 0.1
-            max_depth: 10
-            objective: 'regression_l2'
-            random_state: 0
+        datatype: context   # basic, context, image, text 중 context 가능
+        params:
+            n_estimators: 300               # 트리 개수
+            learning_rate: 0.1              # 학습률
+            max_depth: 10                   # 트리 최대 깊이
+            objective: 'regression_l2'      # 손실 함수
+            random_state: 0                 # 랜덤 시드
 
 
 dataset:
     data_path: ~/book/data/    # 데이터셋 경로
     valid_ratio: 0.2    # Train / Vaildation split
-    stratified: True
+    stratified: True    # Stratified KFold 적용 여부
 
 dataloader:
     batch_size: 1024    # 배치 사이즈
@@ -174,68 +174,68 @@ train:
     resume: False                               # 이어서 학습할 경우 True
     resume_path: saved/checkpoint/FM_best.pt    # 이어서 학습할 모델 경로
 
-optuna_trials: 100
+optuna_trials: 100  # optuna 시행 횟수
 
-optuna_args:
+optuna_args:    # optuna 파라미터 탐색 범위
     CatBoost:
-        depth:
+        depth:  # 트리 최대 깊이
             name: 'depth'
             type: 'int'
             min: 3
             max: 15
-        learning_rate:
+        learning_rate:  # 학습률
             name: 'learning_rate'
             type: 'float'
             min: 0.01
             max: 0.3
-        n_estimators:
+        n_estimators:   # 트리 개수
             name: 'n_estimators'
             type: 'int'
             min: 100
             max: 1000
-        l2_leaf_reg:
+        l2_leaf_reg:    # l2 정규화 계수
             name: 'l2_leaf_reg'
             type: 'int'
             min: 1
             max: 10
     XGBoost:
-        max_depth:
+        max_depth:  # 트리 최대 깊이
             name: 'max_depth'
             type: 'int'
             min: 3
             max: 15
-        learning_rate:
+        learning_rate:  # 학습률
             name: 'learning_rate'
             type: 'float'
             min: 0.01
             max: 0.3
-        n_estimators:
+        n_estimators:   # 트리 개수
             name: 'n_estimators'
             type: 'int'
             min: 100
             max: 1000
-        gamma: 
+        gamma:  # 분할의 최소 손실 감소
             name: 'gamma'
             type: 'float'
             min: 0
             max: 5
     LightGBM:
-        max_depth:
+        max_depth:  # 트리 최대 깊이
             name: 'max_depth'
             type: 'int'
             min: 3
             max: 15
-        learning_rate:
+        learning_rate:  # 학습률
             name: 'learning_rate'
             type: 'float'
             min: 0.01
             max: 0.3
-        n_estimators:
+        n_estimators:   # 트리 개수
             name: 'n_estimators'
             type: 'float'
             min: 0
             max: 1
-        lambda_l2:
+        lambda_l2:  # l2 정규화 계수
             name: 'lambda_l2'
             type: 'float'
             min: 0
