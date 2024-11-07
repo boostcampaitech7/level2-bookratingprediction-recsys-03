@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from tqdm import tqdm
 from PIL import Image
@@ -84,7 +85,7 @@ def process_img_data(users, books, args):
     users_, books_ = process_context_data(users_, books_)
 
     # 이미지 정보 벡터화
-    books_['img_path'] = books_['img_path'].apply(lambda x: f'data/{x}')
+    books_['img_path'] = books_['img_path'].apply(lambda x: os.path.expanduser(f'~/book/data/{x}'))
     img_vecs = []
     for idx in tqdm(books_.index):
         img_vec = image_vector(books_.loc[idx, 'img_path'], args.model_args[args.model].img_size)
