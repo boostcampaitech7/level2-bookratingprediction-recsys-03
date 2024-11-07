@@ -210,7 +210,7 @@ def test(args, model, dataloader, setting, checkpoint=None):
     return predicts
 
 
-def stf_train(args, model, dataloader, logger, setting):
+def stf_train(args, model, dataloader, setting):
     if args.wandb:
         import wandb
     
@@ -224,7 +224,7 @@ def stf_train(args, model, dataloader, logger, setting):
     skf = StratifiedKFold(n_splits = 10, shuffle = True, random_state = 42)
     msg = ''
     
-    for fold, (train_idx, valid_idx) in tqdm(enumerate(skf.split(X, y)), total=skf.n_splits):
+    for (train_idx, valid_idx) in tqdm(skf.split(X, y), total=skf.n_splits):
         
         # Split data
         X_train, y_train = X[train_idx], y[train_idx]
