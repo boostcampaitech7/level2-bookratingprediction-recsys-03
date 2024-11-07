@@ -7,7 +7,7 @@ import torch.optim as optimizer_module
 import torch.optim.lr_scheduler as scheduler_module
 from src.utils import Logger, Setting
 import src.data as data_module
-from src.train import train, test
+from src.train import train, test, stf_train
 import src.models as model_module
 
 
@@ -51,21 +51,23 @@ def main(args, wandb=None):
     if args.train.resume:
         model.load_state_dict(torch.load(args.train.resume_path, weights_only=True))
 
-
-    ######################## TRAIN
-    if not args.predict:
-        print(f'--------------- {args.model} TRAINING ---------------')
-        model = train(args, model, data, logger, setting)
-
-
-    ######################## INFERENCE
-    if not args.predict:
-        print(f'--------------- {args.model} PREDICT ---------------')
-        predicts = test(args, model, data, setting)
+    if args.dataset.stratified and args.model in ['CatBoost', 'XGBoost', 'LightGBM']:
+        predicts = stf_train(args, model, data, setting)
     else:
-        print(f'--------------- {args.model} PREDICT ---------------')
-        predicts = test(args, model, data, setting, args.checkpoint)
+        ######################## TRAIN
+        if not args.predict:
+            print(f'--------------- {args.model} TRAINING ---------------')
+            model = train(args, model, data, logger, setting)
 
+
+        ######################## INFERENCE
+        if not args.predict:
+            print(f'--------------- {args.model} PREDICT ---------------')
+            predicts = test(args, model, data, setting)
+        else:
+            print(f'--------------- {args.model} PREDICT ---------------')
+            predicts = test(args, model, data, setting, args.checkpoint)
+        
 
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.model} PREDICT ---------------')

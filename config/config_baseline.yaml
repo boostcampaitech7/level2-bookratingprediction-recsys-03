@@ -99,7 +99,7 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
         dropout: 0.2        # MLP_Base에서 드롭아웃 비율
     CatBoost:
         datatype: context
-        cat_features: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        cat_features: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         parm:
             n_estimators: 300
             learning_rate: 0.1
@@ -133,6 +133,7 @@ model_args:     # model에 해당하는 파라미터만 실질적으로 사용�
 dataset:
     data_path: ~/book/data/    # 데이터셋 경로
     valid_ratio: 0.2    # Train / Vaildation split
+    stratified: True
 
 dataloader:
     batch_size: 1024    # 배치 사이즈
