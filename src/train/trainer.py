@@ -9,6 +9,7 @@ from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from omegaconf import OmegaConf
+from sklearn.model_selection import StratifiedKFold
 
 METRIC_NAMES = {
     'RMSELoss': 'RMSE',
@@ -205,5 +206,63 @@ def test(args, model, dataloader, setting, checkpoint=None):
                 x = data[0].to(args.device)
             y_hat = model(x)
             predicts.extend(y_hat.tolist())
+    
+    return predicts
+
+
+def stf_train(args, model, dataloader, logger, setting):
+    if args.wandb:
+        import wandb
+    
+    # Prepare data
+    train_data = dataloader['train_dataloader'].dataset
+    if args.device == 'cuda':
+        X, y = train_data[:][0].numpy(), train_data[:][1].numpy()
+    else:
+        X, y = train_data[:][0].cpu().numpy(), train_data[:][1].cpu().numpy()
+    
+    skf = StratifiedKFold(n_splits = 10, shuffle = True, random_state = 42)
+    msg = ''
+    
+    for fold, (train_idx, valid_idx) in tqdm(enumerate(skf.split(X, y)), total=skf.n_splits):
+        
+        # Split data
+        X_train, y_train = X[train_idx], y[train_idx]
+        X_valid, y_valid = X[valid_idx], y[valid_idx]
+
+        # Train
+        if args.model == 'CatBoost':
+            cat_features_list = OmegaConf.to_container(args.model_args.CatBoost.cat_features, resolve=True)
+            model.fit(X_train, y_train, eval_set=(X_valid, y_valid), cat_features=cat_features_list, use_best_model=True, verbose=100, early_stopping_rounds=100)
+        else:
+            model.fit(X_train, y_train)
+        
+        # Score
+        loss_fn = getattr(loss_module, args.sklearn_loss)
+
+        y_hat = model.predict(X_train)
+        train_loss = loss_fn(y_train, y_hat)
+        msg += f'\tTrain Loss ({SKLEARN_METRIC_NAMES[args.sklearn_loss]}): {train_loss:.3f}'
+        
+        y_hat = model.predict(X_valid)
+        valid_loss = loss_fn(y_valid, y_hat)
+        msg += f'\n\tValid Loss ({SKLEARN_METRIC_NAMES[args.sklearn_loss]}): {valid_loss:.3f}' 
+        
+        args.sklearn_metrics = sorted([metric for metric in set(args.sklearn_metrics) if metric != args.sklearn_loss])
+        valid_metrics = dict()
+        for metric in args.sklearn_metrics:
+            metric_fn = getattr(loss_module, metric)
+            valid_metric = metric_fn(y_valid, y_hat)
+            valid_metrics[f'Valid {SKLEARN_METRIC_NAMES[metric]}'] = valid_metric
+        for metric, value in valid_metrics.items():
+            msg += f' | {metric}: {value:.3f}'
+
+        print(msg)
+        if args.wandb:
+            wandb.log({f'Train {SKLEARN_METRIC_NAMES[args.sklearn_loss]}': train_loss, 
+                    f'Valid {SKLEARN_METRIC_NAMES[args.sklearn_loss]}': valid_loss, **valid_metrics})
+        
+        # Predict
+        predicts = test(args, model, dataloader, setting)
     
     return predicts

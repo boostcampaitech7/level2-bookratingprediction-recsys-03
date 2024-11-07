@@ -7,7 +7,7 @@ import torch.optim as optimizer_module
 import torch.optim.lr_scheduler as scheduler_module
 from src.utils import Logger, Setting
 import src.data as data_module
-from src.train import train, test
+from src.train import train, test, stf_train
 import src.models as model_module
 
 
@@ -50,21 +50,23 @@ def main(args, wandb=None):
     if args.train.resume:
         model.load_state_dict(torch.load(args.train.resume_path, weights_only=True))
 
+    if args.dataset.valid_ratio != 0 or args.model not in ['CatBoost', 'XGBoost', 'LightGBM']:
+        ######################## TRAIN
+        if not args.predict:
+            print(f'--------------- {args.model} TRAINING ---------------')
+            model = train(args, model, data, logger, setting)
 
-    ######################## TRAIN
-    if not args.predict:
-        print(f'--------------- {args.model} TRAINING ---------------')
-        model = train(args, model, data, logger, setting)
 
-
-    ######################## INFERENCE
-    if not args.predict:
-        print(f'--------------- {args.model} PREDICT ---------------')
-        predicts = test(args, model, data, setting)
+        ######################## INFERENCE
+        if not args.predict:
+            print(f'--------------- {args.model} PREDICT ---------------')
+            predicts = test(args, model, data, setting)
+        else:
+            print(f'--------------- {args.model} PREDICT ---------------')
+            predicts = test(args, model, data, setting, args.checkpoint)
     else:
-        print(f'--------------- {args.model} PREDICT ---------------')
-        predicts = test(args, model, data, setting, args.checkpoint)
-
+        # StratifiedKFold
+        predicts = stf_train(args, model, data, logger, setting)
 
     ######################## SAVE PREDICT
     print(f'--------------- SAVE {args.model} PREDICT ---------------')
