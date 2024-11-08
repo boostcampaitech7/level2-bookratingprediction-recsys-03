@@ -4,29 +4,30 @@
 ```
 📂 src
 ├── 📂 data
-│    ├── __init__.py 
-│    ├── basic_data.py 
-│    ├── context_data.py 
-│    ├── image_data.py 
-│    └── text_data.py
+│   ├── __init__.py 
+│   ├── basic_data.py 
+│   ├── context_data.py 
+│   ├── image_data.py 
+│   └── text_data.py
 │
 ├── 📂 ensemble
-│    └── ensembles.py
+│   └── ensembles.py
 │
 ├── 📂 loss
-│    ├── __init__.py
-│    └── loss.py
+│   ├── __init__.py
+│   └── loss.py
 │
 ├── 📂 models
-│    ├── .DS_Store
-│    ├── __init__.py 
-│    ├── _helper.py
-│    ├── image_FM.py
-│    └── text_FM.py
+│   ├── .DS_Store
+│   ├── __init__.py 
+│   ├── _helper.py
+│   ├── image_FM.py
+│   └── text_FM.py
 │
 ├── 📂 train
-│    ├── __init__.py 
-│    └── trainer.py
+│   ├── __init__.py 
+│   └── trainer.py
+│
 ├── __init__.py
 ├── utils.py
 └── README.md
@@ -116,22 +117,22 @@
 
 - **`image_FM.py`**
     
-    기존 유저/상품 벡터와 이미지 벡터를 결합하여 FM으로 학습하는 모델을 구현합니다.
+    기존 유저/상품 벡터와 이미지 벡터를 결합하여 FM 기반 모델을 모아놓은 모듈입니다.
     
     - `Image_FM(nn.Module)` : Pytorch의 nn.module을 상속받아 구현된 클래스입니다. 기존 유저/상품 벡터와 이미지 벡터를 결합하여 FM으로 학습하는 모델을 구현합니다.
         - `forward(self, x)`: 사용자-책 및 이미지 데이터를 입력받아 첫 번째 및 두 번째 상호작용을 계산하고 최종 출력을 반환하는 순전파 메서드입니다.
-    - `Image_DeepFM(nn.Module)` : Pytorch의 nn.module을 상속받아 구현된 클래스입니다. 사용자-책 및 이미지 데이터를 입력받아 첫 번째 및 두 번째 상호작용을 계산하고, 깊은 신경망을 통해 추가적인 특징 학습을 수행하여 최종 출력을 반환하는 모델을 구현합니다.
-        - `forward(self, x)` : 1사용자-책 및 이미지 데이터를 입력받아 첫 번째 및 두 번째 상호작용을 계산하고, 깊은 신경망을 통해 추가적인 특징을 학습하여 최종 출력을 반환합니다.
-    - `ResNet_DeepFM(nn.Module)` : Pytorch의 nn.module을 상속받아 구현된 클래스입니다. FM과 Deep Neural Network를 결합하여 유저/상품 벡터와 ResNet 임베딩된 이미지 벡터를 학습하는 모델을 구현합니다.
-        - `forward(self, x)` : FM과 Deep Network를 통해 학습한 결과를 결합해 예측 값을 반환합니다.
+    - `Image_DeepFM(nn.Module)` : Pytorch의 nn.module을 상속받아 구현된 클래스입니다. 사용자-책 및 이미지 데이터를 입력받아 첫 번째 및 두 번째 상호작용을 계산하고, Deep FM을 통해 추가적인 특징 학습을 수행하여 최종 출력을 반환하는 모델을 구현합니다.
+        - `forward(self, x)` : 사용자-책 및 이미지 데이터를 입력받아 첫 번째 및 두 번째 상호작용을 계산하고, Deep Neural Network을 통해 추가적인 특징을 학습하여 최종 출력을 반환하는 순전파 메서드입니다.
+    - `ResNet_DeepFM(nn.Module)` : Pytorch의 nn.module을 상속받아 구현된 클래스입니다. FM과 Deep Neural Network를 결합하여 유저/상품 벡터와 ResNet을 통해 임베딩된 이미지 벡터를 학습하는 모델을 구현합니다.
+        - `forward(self, x)` : FM과 Deep Neural Network를 통해 학습한 결과를 결합해 최종 출력을 반환하는 순전파 메서드입니다.
 - **`text_FM.py`**
     
-    유저와 상품의 sparse 및 dense feature를 결합하여 FM과 DeepFM 기반의 추천 시스템 모델(Text_FM, Text_DeepFM)을 정의합니다.
+    유저와 상품의 sparse 및 dense feature를 결합하여 FM 기반 모델을 모아놓은 모듈입니다.
     
     - `Text_FM(nn.Module)` : Pytorch의 nn.module을 상속받아 구현된 클래스입니다. 기존 유저/상품 벡터와 텍스트 벡터를 결합해 FM으로 학습하는 모델을 구현합니다.
-        - `forward(self, x)` : 입력된 유저/상품 및 텍스트 벡터를 사용해 first-order 및 second-order 상호작용을 계산하여 예측 값을 반환합니다.
+        - `forward(self, x)` : 입력된 유저/상품 및 텍스트 벡터를 사용해 first-order 및 second-order 상호작용을 계산하고 최종 출력을 반환하는 순전파 메서드입니다.
     - `Text_DeepFM(nn.Module)` : Pytorch의 nn.module을 상속받아 구현된 클래스입니다. FM과 Deep Neural Network를 결합하여 sparse 및 dense feature를 함께 학습하는 모델을 구현합니다.
-        - `forward(self, x)` : 입력된 유저/상품 및 텍스트 벡터로부터 FM과 Deep Network를 통해 예측 값을 계산하고 결합해 반환합니다.
+        - `forward(self, x)` : 입력된 유저/상품 및 텍스트 벡터로부터 첫 번째 및 두 번째 상호작용을 계산하고, Deep Neural Network을 통해 추가적인 특징을 학습하여 최종 출력을 반환하는 순전파 메서드입니다.
 
 ### train
 
@@ -150,10 +151,12 @@
 
 - `rmse(real, predict)` : RMSE를 계산하는 함수입니다.
 - `Setting` : 초기 세팅(시드, 경로)을 적용하는 클래스입니다.
+
     - `seed_everything(seed)` : seed 값을 고정시키는 정적메서드입니다.
     - `get_long_path(self, args)` : log file을 저장할 경로를 반환하는 메서드입니다.
     - `get_submit_filename(self, args)` : submit file을 저장할 경로를 반환하는 메서드입니다.
     - `make_dir(self, path)` : 경로가 존재하지 않을 경우 해당 경로를 생성하며, 존재할 경우 pass를 하는 메서드입니다.
+
 - `Logger` : 로그 파일을 관리하는 클래스입니다.
     - `log(self, epoch, train_loss, valid_loss=None, valid_metrics=None)` : log file에 epoch, train loss, valid loss를 기록하는 메서드입니다. 이 때, log file은 train.log로 저장됩니다.
     - `close(self)` : log file을 닫는 메서드입니다.
