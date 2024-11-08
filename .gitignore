@@ -5,3 +5,4 @@ wandb/
 catboost_info/
 *.pth
 saved/
+*.DS_Store
