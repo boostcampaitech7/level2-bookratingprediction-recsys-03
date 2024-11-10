@@ -152,9 +152,9 @@ CatBoost와 베이스라인 코드로 주어진 Image DeepFM, Text DeepFM을 각
         └── model-experiment       # 모델 실험
     ```
     
-- *master(main)* Branch에 Pull request를 하는 것이 아닌,
+- *master(main)* branch에 Pull request를 하는 것이 아닌,
     
-    ***data*** Branch 또는 ***model*** Branch에 Pull request 요청
+    ***data*** branch 또는 ***model*** branch에 Pull request 요청
     
 - commit message는 아래와 같이 구분해서 작성 (한글)
 
@@ -166,7 +166,7 @@ CatBoost와 베이스라인 코드로 주어진 Image DeepFM, Text DeepFM을 각
   
   ex) git commit -m “**test**: {내용} 테스트”
 
-- pull request merge 담당자 : **data - 근서** / **model - 윤경** / **최종 - 영균**
+- Pull request merge 담당자 : **data - 근서** / **model - 윤경** / **최종 - 영균**
 
   나머지는 ***book*** branch 건드리지 말 것!
 
